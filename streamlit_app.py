@@ -6,7 +6,7 @@ import io
 st.set_page_config(page_title="PDF Koordinat Çıkarıcı", layout="centered")
 
 st.title("📍 PDF Koordinat Çıkarıcı")
-st.markdown("`N° d'appui`, **adres bilgileri**, **koordinatlar** ve **Google Maps** linklerini çıkaran web aracı")
+st.markdown("Tüm sahaları otomatik çeken araç: `N° d'appui`, `Adresse`, `Commune`, `Code INSEE`, `Hauteur`, `Composite`, `Niveau`, `Environnements`, `Koordinatlar`, `Google Maps`")
 
 uploaded_file = st.file_uploader("📄 PDF dosyasını yükle", type=["pdf"])
 
@@ -34,13 +34,13 @@ if uploaded_file is not None:
                 re.DOTALL
             )
 
-            adresse = re.search(r"Adresse\s*:\s*(.+)", text)
-            commune = re.search(r"Commune\s*:\s*(.+)", text)
-            code_insee = re.search(r"Code INSEE\s*:\s*(\d+)", text)
-            hauteur = re.search(r"Hauteur\s*:\s*([\d.]+ ?m)", text)
-            composite = re.search(r"Composite\s*:\s*(Oui|Non)", text)
-            niveau = re.search(r"(R\+\d+)", text)
-            environnements = re.findall(r"Environnement[s]*\s*:\s*(.+)", text)
+            adresse = re.search(r"[Aa]dresse\s*[:\-]?\s*(.+)", text)
+            commune = re.search(r"[Cc]ommune\s*[:\-]?\s*(.+)", text)
+            code_insee = re.search(r"[Cc]ode INSEE\s*[:\-]?\s*(\d{5})", text)
+            hauteur = re.search(r"[Hh]auteur\s*[:\-]?\s*([\d,.]+ ?m)", text)
+            composite = re.search(r"[Cc]omposite\s*[:\-]?\s*(Oui|Non)", text)
+            niveau = re.search(r"(R\+?\d+|R0|R1)", text)
+            environnements = re.search(r"[Ee]nvironnement[s]*\s*[:\-]?\s*(.+)", text)
 
             for appui, lat, lon in matches:
                 lat_decimal = dms_to_decimal(lat)
@@ -56,7 +56,7 @@ if uploaded_file is not None:
                     "hauteur": hauteur.group(1).strip() if hauteur else "-",
                     "composite": composite.group(1).strip() if composite else "-",
                     "niveau": niveau.group(1).strip() if niveau else "-",
-                    "environnements": environnements[0].strip() if environnements else "-",
+                    "environnements": environnements.group(1).strip() if environnements else "-",
                     "latitude": lat,
                     "longitude": lon,
                     "maps_link": maps_link
@@ -65,6 +65,8 @@ if uploaded_file is not None:
 
     if results:
         st.success(f"{len(results)} sonuç bulundu.")
+
+        output_text = io.StringIO()
         for r in results:
             st.markdown(f"""
 **📁 Dosya:** {r['dosya']}  
@@ -82,9 +84,6 @@ if uploaded_file is not None:
 ---
 """)
 
-        # TXT çıktısı oluştur
-        output_text = io.StringIO()
-        for r in results:
             output_text.write(f"""📁 Dosya: {r['dosya']}
 N° d'appui: {r['appui']}
 Adresse: {r['adresse']}
@@ -102,4 +101,4 @@ Google Maps: {r['maps_link']}
         st.download_button("⬇️ TXT Dosyasını İndir", output_text.getvalue(), file_name="output.txt")
 
     else:
-        st.warning("❌ Veri bulunamadı. PDF içeriğini kontrol et.")
+        st.warning("❌ Veri bulunamadı. PDF formatını kontrol et.")
