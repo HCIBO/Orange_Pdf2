@@ -4,7 +4,6 @@ import re
 import io
 
 st.set_page_config(page_title="PDF Koordinat Çıkarıcı", layout="centered")
-
 st.title("📍 PDF Koordinat Çıkarıcı")
 st.markdown("Tüm sahaları otomatik çeken araç: `N° d'appui`, `Adresse`, `Commune`, `Code INSEE`, `Hauteur`, `Composite`, `Niveau`, `Environnements`, `Koordinatlar`, `Google Maps`")
 
@@ -28,19 +27,27 @@ if uploaded_file is not None:
             if not text:
                 continue
 
+            # Koordinat eşleşmesi
             matches = re.findall(
                 r"N° d'appui\s+(\d+).*?Latitude\s+([\d°'\.\"]+[NS]).*?Longitude\s+([\d°'\.\"]+[EO])",
                 text,
                 re.DOTALL
             )
 
-            adresse = re.search(r"[Aa]dresse\s*[:\-]?\s*(.+)", text)
-            commune = re.search(r"[Cc]ommune\s*[:\-]?\s*(.+)", text)
-            code_insee = re.search(r"[Cc]ode INSEE\s*[:\-]?\s*(\d{5})", text)
-            hauteur = re.search(r"[Hh]auteur\s*[:\-]?\s*([\d,.]+ ?m)", text)
-            composite = re.search(r"[Cc]omposite\s*[:\-]?\s*(Oui|Non)", text)
-            niveau = re.search(r"(R\+?\d+|R0|R1)", text)
-            environnements = re.search(r"[Ee]nvironnement[s]*\s*[:\-]?\s*(.+)", text)
+            # Diğer alanlar (toleranslı)
+            def extract(pattern, default="-"):
+                result = re.search(pattern, text, re.IGNORECASE)
+                return result.group(1).strip() if result else default
+
+            adresse = extract(r"Adresse\s*[:\-]?\s*(.+)")
+            commune = extract(r"Commune\s*[:\-]?\s*(.+)")
+            code_insee = extract(r"Code INSEE\s*[:\-]?\s*(\d{5})")
+            hauteur = extract(r"Hauteur\s*[:\-]?\s*([\d.,]+ ?m)")
+            composite = extract(r"Composite\s*[:\-]?\s*(Oui|Non)")
+            niveau = extract(r"(R\+?\d+|R0|R1)")
+            environnements_raw = extract(r"Environnement[s]*\s*[:\-]?\s*(.+)")
+
+            environnements_list = [e.strip() for e in environnements_raw.split(",")] if environnements_raw != "-" else ["-"]
 
             for appui, lat, lon in matches:
                 lat_decimal = dms_to_decimal(lat)
@@ -50,13 +57,13 @@ if uploaded_file is not None:
                 result = {
                     "dosya": uploaded_file.name,
                     "appui": appui,
-                    "adresse": adresse.group(1).strip() if adresse else "-",
-                    "commune": commune.group(1).strip() if commune else "-",
-                    "code_insee": code_insee.group(1).strip() if code_insee else "-",
-                    "hauteur": hauteur.group(1).strip() if hauteur else "-",
-                    "composite": composite.group(1).strip() if composite else "-",
-                    "niveau": niveau.group(1).strip() if niveau else "-",
-                    "environnements": environnements.group(1).strip() if environnements else "-",
+                    "adresse": adresse,
+                    "commune": commune,
+                    "code_insee": code_insee,
+                    "hauteur": hauteur,
+                    "composite": composite,
+                    "niveau": niveau,
+                    "environnements": environnements_list,
                     "latitude": lat,
                     "longitude": lon,
                     "maps_link": maps_link
@@ -68,6 +75,7 @@ if uploaded_file is not None:
 
         output_text = io.StringIO()
         for r in results:
+            envs = ", ".join(r["environnements"])
             st.markdown(f"""
 **📁 Dosya:** {r['dosya']}  
 **N° d'appui:** {r['appui']}  
@@ -77,7 +85,7 @@ if uploaded_file is not None:
 **Hauteur:** {r['hauteur']}  
 **Composite:** {r['composite']}  
 **Niveau:** {r['niveau']}  
-**Environnements:** {r['environnements']}  
+**Environnements:** {envs}  
 **Latitude:** {r['latitude']}  
 **Longitude:** {r['longitude']}  
 🔗 [Google Maps]({r['maps_link']})  
@@ -92,13 +100,12 @@ Code INSEE: {r['code_insee']}
 Hauteur: {r['hauteur']}
 Composite: {r['composite']}
 Niveau: {r['niveau']}
-Environnements: {r['environnements']}
+Environnements: {envs}
 Latitude: {r['latitude']}
 Longitude: {r['longitude']}
 Google Maps: {r['maps_link']}
 {'-'*50}\n\n""")
 
         st.download_button("⬇️ TXT Dosyasını İndir", output_text.getvalue(), file_name="output.txt")
-
     else:
         st.warning("❌ Veri bulunamadı. PDF formatını kontrol et.")
