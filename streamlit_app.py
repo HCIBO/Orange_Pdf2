@@ -34,7 +34,6 @@ if uploaded_file is not None:
                 re.DOTALL
             )
 
-            # Diğer alanlar (toleranslı)
             def extract(pattern, default="-"):
                 result = re.search(pattern, text, re.IGNORECASE)
                 return result.group(1).strip() if result else default
@@ -42,12 +41,16 @@ if uploaded_file is not None:
             adresse = extract(r"Adresse\s*[:\-]?\s*(.+)")
             commune = extract(r"Commune\s*[:\-]?\s*(.+)")
             code_insee = extract(r"Code INSEE\s*[:\-]?\s*(\d{5})")
-            hauteur = extract(r"Hauteur\s*[:\-]?\s*([\d.,]+ ?m)")
             composite = extract(r"Composite\s*[:\-]?\s*(Oui|Non)")
             niveau = extract(r"(R\+?\d+|R0|R1)")
-            environnements_raw = extract(r"Environnement[s]*\s*[:\-]?\s*(.+)")
 
-            environnements_list = [e.strip() for e in environnements_raw.split(",")] if environnements_raw != "-" else ["-"]
+            # 🔎 Hauteur değerleri X ile seçilenler
+            hauteur_matches = re.findall(r"[☒Xx]\s*([\d.,]+ ?m?)", text)
+            hauteur = hauteur_matches[0] if hauteur_matches else "-"
+
+            # 🔎 Environnements: X ile seçilenler
+            env_matches = re.findall(r"[☒Xx]\s*([A-Za-zéèàç0-9\- ]+)", text)
+            environnements = ", ".join([e.strip() for e in env_matches]) if env_matches else "-"
 
             for appui, lat, lon in matches:
                 lat_decimal = dms_to_decimal(lat)
@@ -63,7 +66,7 @@ if uploaded_file is not None:
                     "hauteur": hauteur,
                     "composite": composite,
                     "niveau": niveau,
-                    "environnements": environnements_list,
+                    "environnements": environnements,
                     "latitude": lat,
                     "longitude": lon,
                     "maps_link": maps_link
@@ -75,7 +78,6 @@ if uploaded_file is not None:
 
         output_text = io.StringIO()
         for r in results:
-            envs = ", ".join(r["environnements"])
             st.markdown(f"""
 **📁 Dosya:** {r['dosya']}  
 **N° d'appui:** {r['appui']}  
@@ -85,7 +87,7 @@ if uploaded_file is not None:
 **Hauteur:** {r['hauteur']}  
 **Composite:** {r['composite']}  
 **Niveau:** {r['niveau']}  
-**Environnements:** {envs}  
+**Environnements:** {r['environnements']}  
 **Latitude:** {r['latitude']}  
 **Longitude:** {r['longitude']}  
 🔗 [Google Maps]({r['maps_link']})  
@@ -100,7 +102,7 @@ Code INSEE: {r['code_insee']}
 Hauteur: {r['hauteur']}
 Composite: {r['composite']}
 Niveau: {r['niveau']}
-Environnements: {envs}
+Environnements: {r['environnements']}
 Latitude: {r['latitude']}
 Longitude: {r['longitude']}
 Google Maps: {r['maps_link']}
