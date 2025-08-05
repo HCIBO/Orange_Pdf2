@@ -5,7 +5,7 @@ import io
 
 st.set_page_config(page_title="PDF Koordinat Çıkarıcı", layout="centered")
 st.title("📍 PDF Koordinat Çıkarıcı")
-st.markdown("Tüm sahaları otomatik çeken araç: `N° d'appui`, `Adresse`, `Commune`, `Code INSEE`, `Hauteur`, `Composite`, `Niveau`, `Environnements`, `Koordinatlar`, `Google Maps`")
+st.markdown("Sadece gerekli bilgileri çeken sade ve net araç")
 
 uploaded_file = st.file_uploader("📄 PDF dosyasını yükle", type=["pdf"])
 
@@ -34,6 +34,7 @@ if uploaded_file is not None:
                 re.DOTALL
             )
 
+            # Diğer alanlar
             def extract(pattern, default="-"):
                 result = re.search(pattern, text, re.IGNORECASE)
                 return result.group(1).strip() if result else default
@@ -41,16 +42,6 @@ if uploaded_file is not None:
             adresse = extract(r"Adresse\s*[:\-]?\s*(.+)")
             commune = extract(r"Commune\s*[:\-]?\s*(.+)")
             code_insee = extract(r"Code INSEE\s*[:\-]?\s*(\d{5})")
-            composite = extract(r"Composite\s*[:\-]?\s*(Oui|Non)")
-            niveau = extract(r"(R\+?\d+|R0|R1)")
-
-            # 🔎 Hauteur değerleri X ile seçilenler
-            hauteur_matches = re.findall(r"[☒Xx]\s*([\d.,]+ ?m?)", text)
-            hauteur = hauteur_matches[0] if hauteur_matches else "-"
-
-            # 🔎 Environnements: X ile seçilenler
-            env_matches = re.findall(r"[☒Xx]\s*([A-Za-zéèàç0-9\- ]+)", text)
-            environnements = ", ".join([e.strip() for e in env_matches]) if env_matches else "-"
 
             for appui, lat, lon in matches:
                 lat_decimal = dms_to_decimal(lat)
@@ -63,10 +54,6 @@ if uploaded_file is not None:
                     "adresse": adresse,
                     "commune": commune,
                     "code_insee": code_insee,
-                    "hauteur": hauteur,
-                    "composite": composite,
-                    "niveau": niveau,
-                    "environnements": environnements,
                     "latitude": lat,
                     "longitude": lon,
                     "maps_link": maps_link
@@ -84,10 +71,6 @@ if uploaded_file is not None:
 **Adresse:** {r['adresse']}  
 **Commune:** {r['commune']}  
 **Code INSEE:** {r['code_insee']}  
-**Hauteur:** {r['hauteur']}  
-**Composite:** {r['composite']}  
-**Niveau:** {r['niveau']}  
-**Environnements:** {r['environnements']}  
 **Latitude:** {r['latitude']}  
 **Longitude:** {r['longitude']}  
 🔗 [Google Maps]({r['maps_link']})  
@@ -99,10 +82,6 @@ N° d'appui: {r['appui']}
 Adresse: {r['adresse']}
 Commune: {r['commune']}
 Code INSEE: {r['code_insee']}
-Hauteur: {r['hauteur']}
-Composite: {r['composite']}
-Niveau: {r['niveau']}
-Environnements: {r['environnements']}
 Latitude: {r['latitude']}
 Longitude: {r['longitude']}
 Google Maps: {r['maps_link']}
